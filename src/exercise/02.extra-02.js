@@ -1,5 +1,5 @@
 // useCallback: custom hooks
-// http://localhost:3000/isolated/exercise/02.js
+// Exercise 2 Extra Credit 2
 
 import * as React from 'react'
 import {
@@ -10,14 +10,26 @@ import {
   PokemonErrorBoundary,
 } from '../pokemon'
 
-// Exercise 1
-// For the exercise, we have a reducer that’s responsible for managing the state 
-// of the promise for fetching the pokemon. Managing async state is something every app 
-// does all the time so it would be nice if we could abstract that away into a custom hook 
-// and make use of it elsewhere.
+// 2. 💯 return a memoized run function from useAsync
+// Requiring users to provide a memoized value is fine.
+// You can document it as part of the API and expect people to just read the docs right?
+// lol, that’s hilarious 😂 It’d be WAY better if we could redesign the API a bit so we
+// (as the hook developers) are the ones who have to memoize the function,
+// and the users of our hook don’t have to worry about it.
 
-// Your job is to extract the logic from the PokemonInfo component into a custom useAsync hook. 
-// In the process you’ll find you need to do some fancy things with dependencies.
+// So see if you can redesign this a little bit by providing a (memoized) run function
+// that people can call in their own useEffect like this:
+
+// const {data: pokemon, status, error, run} = useAsync({
+//   status: pokemonName ? 'pending' : 'idle',
+// })
+
+// React.useEffect(() => {
+//   if (!pokemonName) {
+//     return
+//   }
+//   run(fetchPokemon(pokemonName))
+// }, [pokemonName, run])
 
 function asyncReducer(state, action) {
   switch (action.type) {
@@ -36,47 +48,45 @@ function asyncReducer(state, action) {
   }
 }
 
-const useAsync = (asyncCallback, initialState, dependencies) => {
+const useAsync = initialState => {
   const [state, dispatch] = React.useReducer(asyncReducer, {
-    status:'idle',
+    status: 'idle',
     data: null,
     error: null,
-    ...initialState
+    ...initialState,
   })
 
-  React.useEffect(() => {
-    const promise = asyncCallback()
-    if (!promise) {
-      return
-    }
-    dispatch({type: 'pending'})
-    promise.then(
-      data => {
-        dispatch({type: 'resolved', data})
-      },
-      error => {
-        dispatch({type: 'rejected', error})
-      },
-    )
+  const {status, data, error} = state
 
-  }, dependencies);
+  const run = React.useCallback(
+    promise => {
+      dispatch({type: 'pending'})
+      promise.then(
+        data => {
+          dispatch({type: 'resolved', data})
+        },
+        error => {
+          dispatch({type: 'rejected', error})
+        },
+      )
+    },
+    [dispatch],
+  )
 
-  return state
+  return {data, status, error, run}
 }
 
 function PokemonInfo({pokemonName}) {
-  const state = useAsync(
-    () => {
-      if (!pokemonName) {
-        return
-      }
-      return fetchPokemon(pokemonName)
-    },
-    {status: pokemonName ? 'pending' : 'idle'},
-    [pokemonName],
-  )
+  const {data: pokemon, status, error, run} = useAsync({
+    status: pokemonName ? 'pending' : 'idle',
+  })
 
-  const {data, status, error} = state
+  React.useEffect(() => {
+    if (!pokemonName) {
+      return
+    }
+    run(fetchPokemon(pokemonName))
+  }, [pokemonName, run])
 
   if (status === 'idle' || !pokemonName) {
     return 'Submit a pokemon'
@@ -85,7 +95,7 @@ function PokemonInfo({pokemonName}) {
   } else if (status === 'rejected') {
     throw error
   } else if (status === 'resolved') {
-    return <PokemonDataView pokemon={data} />
+    return <PokemonDataView pokemon={pokemon} />
   }
 
   throw new Error('This should be impossible')
@@ -116,4 +126,3 @@ function App() {
 }
 
 export default App
-

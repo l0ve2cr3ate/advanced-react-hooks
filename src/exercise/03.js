@@ -3,23 +3,34 @@
 
 import * as React from 'react'
 
-// 🐨 create your CountContext here with React.createContext
+// Exercise 1
+// We’re putting everything in one file to keep things simple,
+// but I’ve labeled things a bit so you know that typically your context provider
+// will be placed in a different file and expose the provider component itself
+// as well as the custom hook to access the context value.
 
-// 🐨 create a CountProvider component here that does this:
-//   🐨 get the count state and setCount updater with React.useState
-//   🐨 create a `value` array with count and setCount
-//   🐨 return your context provider with the value assigned to that array and forward all the other props
-//   💰 more specifically, we need the children prop forwarded to the context provider
+// We’re going to take the Count component that we had before and separate the button
+// from the count display. We need to access both the count state as well as the
+// setCount updater in these different components which live in different parts of the tree.
+// Normally lifting state up would be the way to solve this trivial problem,
+// but this is a contrived example so you can focus on learning how to use context.
+
+// Your job is to fill in the CountProvider function component so that the app works
+// and the tests pass.
+
+const CountContext = React.createContext()
+const CountProvider = ({children}) => {
+  const [count, setCount] = React.useState(0)
+  return <CountContext.Provider value={[count, setCount]}>{children}</CountContext.Provider>
+}
 
 function CountDisplay() {
-  // 🐨 get the count from useContext with the CountContext
-  const count = 0
+  const [count] = React.useContext(CountContext)
   return <div>{`The current count is ${count}`}</div>
 }
 
 function Counter() {
-  // 🐨 get the setCount from useContext with the CountContext
-  const setCount = () => {}
+ const [, setCount] = React.useContext(CountContext)
   const increment = () => setCount(c => c + 1)
   return <button onClick={increment}>Increment count</button>
 }
@@ -27,14 +38,13 @@ function Counter() {
 function App() {
   return (
     <div>
-      {/*
-        🐨 wrap these two components in the CountProvider so they can access
-        the CountContext value
-      */}
-      <CountDisplay />
-      <Counter />
+         <CountProvider>
+          <CountDisplay />
+          <Counter />
+      </CountProvider>
     </div>
   )
 }
 
 export default App
+
